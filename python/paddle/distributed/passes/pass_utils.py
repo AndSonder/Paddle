@@ -408,7 +408,7 @@ def _create_program(src_block, dst_block, src_op, force_create=False):
 
 def _insert_sync_for_fthenb_1f1b(program):
     """
-    本实现参考了PaddlePaddle中的一些文件（可能是其他源码文件的链接），与'PipelineOptimizer'函数不同的是，
+    本实现参考了PaddlePaddle中的一些文件，与'PipelineOptimizer'函数不同的是，
     该函数假定程序中已经通过'reshard'插入了'send_v2'和'recv_v2'操作。
 
     Args:
