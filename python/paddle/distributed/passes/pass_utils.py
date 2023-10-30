@@ -408,31 +408,40 @@ def _create_program(src_block, dst_block, src_op, force_create=False):
 
 def _insert_sync_for_fthenb_1f1b(program):
     """
-    This implementation refers to lots of Paddle/python/paddle/base/optimizer.py.
-    The difference between this function with 'PipelineOptimizer' is that
-    'send_v2' op and 'recv_v2' op have been inserted in program by 'reshard'.
+    本实现参考了PaddlePaddle中的一些文件（可能是其他源码文件的链接），与'PipelineOptimizer'函数不同的是，
+    该函数假定程序中已经通过'reshard'插入了'send_v2'和'recv_v2'操作。
+
+    Args:
+        program (paddle.fluid.Program): 需要插入同步操作的PaddlePaddle程序。
+
+    Returns:
+        无
     """
 
     for block in program.blocks:
         offset = 0
         first_optimize_index = None
+
+        # 查找第一个优化操作
         for index, op in enumerate(list(block.ops)):
             if is_optimize_op(op):
                 first_optimize_index = index
                 break
 
-        # insert sync ops
+        # 插入同步操作
         for index, op in enumerate(list(block.ops)):
-            # NOTE: pipeline might hang when dynamic_shape is True
+            # 注意：当dynamic_shape为True时，流水线可能会出现阻塞
             if op.type in ['send_v2', 'recv_v2']:
                 op._set_attr("dynamic_shape", False)
-            # set send op on comm stream
+
+            # 设置'send_v2'操作在通信流上
             if op.type == 'send_v2':
-                # step1: set 'use_calc_stream' False
+                # 步骤1：将'use_calc_stream'设置为False
                 op._set_attr("use_calc_stream", False)
                 op_role = op.attr('op_role')
                 ring_id = op.attr('ring_id')
-                # step2: insert 'c_sync_calc_stream' op before 'send_v2' op
+
+                # 步骤2：在'send_v2'操作之前插入'c_sync_calc_stream'操作
                 var_name = op.input_arg_names[0]
                 var = block.var(var_name)
                 block._insert_op_without_sync(
@@ -443,14 +452,15 @@ def _insert_sync_for_fthenb_1f1b(program):
                     attrs={'op_role': op_role},
                 )
                 offset += 1
-                # step3: insert 'c_sync_comm_stream' op after 'send_v2' op or
-                # before the first optimize op
+
+                # 步骤3：在'send_v2'操作之后或第一个优化操作之前插入'c_sync_comm_stream'操作
                 if int(op_role) == int(OpRole.Backward):
                     index = first_optimize_index + offset
                     new_op_role = OpRole.Optimize
                 else:
                     index = index + offset + 1
                     new_op_role = OpRole.Backward
+
                 sync_comm_op = block._insert_op_without_sync(
                     index=index,
                     type="c_sync_comm_stream",
@@ -461,41 +471,46 @@ def _insert_sync_for_fthenb_1f1b(program):
                         'ring_id': ring_id,
                     },
                 )
-                # step4: If 'send_v2' op in forward parse, set 'pipeline_flag' to distinguish
-                # whether the 'c_sync_comm_stream' op is inserted for pipeline.
+
+                # 步骤4：如果'send_v2'操作在前向解析中，设置'pipeline_flag'以区分
+                # 是否为流水线插入的'c_sync_comm_stream'操作
                 if int(op_role) == int(OpRole.Forward):
                     sync_comm_op._set_attr('pipeline_flag', '')
                     offset += 1
+
         block._sync_with_cpp()
 
         offset = 0
         backward_recv_index = None
+
+        # 查找第一个"recv_v2"操作
         for index, op in enumerate(block.ops):
             if op.type == "recv_v2" and is_backward_op(op):
                 backward_recv_index = index
                 break
+
         if backward_recv_index is None:
             continue
 
-        # replace 'c_sync_comm_stream' op with 'nop' op
-        # use nop op for gc
+        # 用'nop'操作替换'c_sync_comm_stream'操作，用于垃圾回收
         for index, op in enumerate(list(block.ops)):
             if index >= backward_recv_index:
                 break
+
             if op.type == 'c_sync_comm_stream' and op.has_attr('pipeline_flag'):
                 var_name = op.output_arg_names[0]
                 var = block.var(var_name)
                 block._remove_op(index + offset, sync=False)
                 offset -= 1
-                if not use_new_executor():
-                    # NOTE: new executor will make sure gc are right without using nop op.
-                    block._insert_op_without_sync(
-                        index=backward_recv_index,
-                        type="nop",
-                        inputs={'X': [var]},
-                        outputs={'Out': [var]},
-                        attrs={'op_role': OpRole.Backward},
-                    )
+
+                block._insert_op_without_sync(
+                    index=backward_recv_index,
+                    type="nop",
+                    inputs={'X': [var]},
+                    outputs={'Out': [var]},
+                    attrs={'op_role': OpRole.Backward},
+                )
+
         block._sync_with_cpp()
 
 
