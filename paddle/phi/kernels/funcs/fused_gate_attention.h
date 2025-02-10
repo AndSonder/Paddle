@@ -32,7 +32,7 @@ namespace phi {
 namespace funcs {
 
 template <typename T>
-__global__ void SimleScaleKernel(int64_t numel, float scale, T* inout) {
+__global__ void SimpleScaleKernel(int64_t numel, float scale, T* inout) {
   CUDA_KERNEL_LOOP_TYPE(i, numel, int64_t) {
     inout[i] = static_cast<T>(scale * static_cast<float>(inout[i]));
   }
@@ -1247,10 +1247,10 @@ class FlashAttnWithGating {
 
     auto gpu_config =
         phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx_, numel, 1);
-    SimleScaleKernel<T><<<gpu_config.block_per_grid,
-                          gpu_config.thread_per_block,
-                          0,
-                          dev_ctx_.stream()>>>(numel, scale, ptr);
+    SimpleScaleKernel<T><<<gpu_config.block_per_grid,
+                           gpu_config.thread_per_block,
+                           0,
+                           dev_ctx_.stream()>>>(numel, scale, ptr);
   }
 
   const phi::GPUContext& dev_ctx_;

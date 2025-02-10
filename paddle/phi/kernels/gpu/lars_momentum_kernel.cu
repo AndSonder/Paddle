@@ -513,17 +513,17 @@ void LarsMomentumKernel(
         LARS_MAX_MERGED_OPS,
         errors::InvalidArgument(
             "The maximum number of merged-ops supported is (%d), but"
-            "lars op required for trainning this model is (%d)\n",
+            "lars op required for training this model is (%d)\n",
             LARS_MAX_MERGED_OPS,
             op_num));
 
     /* Implementation of lars optimizer consists of following two steps:
       1. Figure out the L2 norm statistic result of grad data and param data.
       2. Update param and velocity with usage of L2 norm statistic result.
-    Step1 and step2 can be merged with api provided by nvida
+    Step1 and step2 can be merged with api provided by nvidia
       cudaLaunchCooperativeKernel:
-      - The thread quantity shall less than pyhsical SM limited threads
-      - Launche as thread-block can synchronizlly execute. */
+      - The thread quantity shall less than physical SM limited threads
+      - Launches as thread-block can synchronizlly execute. */
     cudaOccupancyMaxActiveBlocksPerMultiprocessor(
         &num_blocks_per_sm,
         MergedMomentumLarsKernel<T, MT>,

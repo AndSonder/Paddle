@@ -2080,16 +2080,16 @@ def get_setup_parameters():
         'paddle.decomposition',
         'paddle._typing',
         'paddle._typing.libs',
+        'paddle.api_tracer',
     ]
 
-    if env_dict.get("WITH_PIP_TENSORRT") == 'ON':
+    if env_dict.get("WITH_TENSORRT") == 'ON':
         packages.extend(
             [
                 'paddle.tensorrt',
                 'paddle.tensorrt.impls',
             ]
         )
-
     paddle_bins = ''
     if not env_dict.get("WIN32"):
         paddle_bins = [

@@ -16,6 +16,7 @@ import numpy as np
 import tensorrt as trt
 
 from paddle.tensorrt.converter_utils import (
+    WithFp16,
     add_1D_constant_layer,
     append_ones,
     get_axes_for_reduce_op,
@@ -157,6 +158,72 @@ def instance_norm_converter(network, paddle_op, inputs):
     )
     instance_norm_layer = network.add_plugin_v2(instance_norm_inputs, plugin)
     return instance_norm_layer.get_output(0)
+
+
+@converter_registry.register(
+    "pd_op.fused_bias_dropout_residual_layer_norm",
+    trt_version="trt_version_ge=8.0",
+)
+def fused_bias_dropout_residual_layer_norm_converter(
+    network, paddle_op, inputs
+):
+    input1, input2, ele_bias, scale, bias = inputs
+    has_bias = ele_bias is not None
+    bias_size = bias.size
+    scale_size = scale.size
+    ele_bias_size = ele_bias.size if has_bias else 0
+    epsilon = paddle_op.attrs().get("ln_epsilon", 1e-5)
+    with_fp16 = int(WithFp16())
+    ele_bias_data = (
+        ele_bias.numpy().astype('float16') if with_fp16 else ele_bias.numpy()
+    )
+    plugin_fields = [
+        trt.PluginField("bias", bias.numpy(), trt.PluginFieldType.FLOAT32),
+        trt.PluginField("scale", scale.numpy(), trt.PluginFieldType.FLOAT32),
+        trt.PluginField(
+            "ele_bias",
+            ele_bias_data,
+            (
+                trt.PluginFieldType.FLOAT16
+                if with_fp16
+                else trt.PluginFieldType.FLOAT32
+            ),
+        ),
+        trt.PluginField(
+            "bias_size",
+            np.array([bias_size], dtype=np.int32),
+            trt.PluginFieldType.INT32,
+        ),
+        trt.PluginField(
+            "scale_size",
+            np.array([scale_size], dtype=np.int32),
+            trt.PluginFieldType.INT32,
+        ),
+        trt.PluginField(
+            "ele_bias_size",
+            np.array([ele_bias_size], dtype=np.int32),
+            trt.PluginFieldType.INT32,
+        ),
+        trt.PluginField(
+            "epsilon",
+            np.array([epsilon], dtype=np.float32),
+            trt.PluginFieldType.FLOAT32,
+        ),
+        trt.PluginField(
+            "with_fp16",
+            np.array([with_fp16], dtype=np.bool_),
+            trt.PluginFieldType.INT32,
+        ),
+    ]
+    plugin_field_collection = trt.PluginFieldCollection(plugin_fields)
+    plugin_name = "pir_preln_residual_bias_plugin_dynamic"
+    plugin_version = "1"
+    plugin = get_trt_plugin(
+        plugin_name, plugin_field_collection, plugin_version
+    )
+    plugin_inputs = [input1, input2]
+    layer = network.add_plugin_v2(plugin_inputs, plugin)
+    return layer.get_output(0)
 
 
 @converter_registry.register(

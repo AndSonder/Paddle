@@ -930,6 +930,18 @@ class Engine:
                 lambda op: bool(op.has_attr('op_role') and op.op_role == 0),
             )
 
+        if (
+            self._strategy.fused_passes.fused_passes_list is not None
+            and "fused_gemm_epilogue_pass"
+            in self._strategy.fused_passes.fused_passes_list
+        ):
+            pm = pir.PassManager()
+            pm.add_pass("fused_gemm_epilogue_pass", {})
+            pm.run(dense_program)
+            self._strategy.fused_passes.fused_passes_list.remove(
+                "fused_gemm_epilogue_pass"
+            )
+
         if self._strategy.pipeline.enable:
             self._job_plan = pipeline_pass(
                 [dense_program], [dense_program], self._strategy.pipeline
@@ -1366,7 +1378,7 @@ class Engine:
             self.program_helper.init_pir(
                 self._pir_dist_main_progs[mode], self._place
             )
-            changed_ouput_op_list = []
+            changed_output_op_list = []
             if self._executor is None:
                 self._executor = paddle.static.Executor(self._place)
                 startup_prog = self._startup_progs[mode].clone()
@@ -1424,7 +1436,7 @@ class Engine:
                             )
                             if src_value.persistable:
                                 src_value.persistable = False
-                                changed_ouput_op_list.append(op)
+                                changed_output_op_list.append(op)
                             op.operand(0).set_source(reshard_var)
                 for del_op in del_ops:
                     del_op.erase()
@@ -1434,7 +1446,7 @@ class Engine:
                 paddle.base.libpaddle.pir.apply_dist2dense_pass(startup_prog)
                 remove_unuseful_comm_op_pass(startup_prog)
 
-                for op in changed_ouput_op_list:
+                for op in changed_output_op_list:
                     op.operand_source(0).persistable = True
                 self._executor.run(startup_prog)
                 if self._job_plan is not None:

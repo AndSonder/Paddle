@@ -288,7 +288,7 @@ class Optimizer:
         # Dictionary of accumulators. Some optimizer subclasses need to
         # allocate and manage extra tensors associated with the parameters
         # to train. These tensors are called accumulators.
-        # {accum_name : { paramter_name : accumulator_for_parameter, ...}, ...}
+        # {accum_name : { parameter_name : accumulator_for_parameter, ...}, ...}
         self._accumulators = defaultdict(lambda: {})
         self.helper = None
         self._opti_name_list = []
@@ -528,11 +528,11 @@ class Optimizer:
                         initializer = paddle.nn.initializer.Constant(
                             value=lr_value
                         )
-                        paramete_meta = paddle.pir.core.ParameterMeta(
+                        parameter_meta = paddle.pir.core.ParameterMeta(
                             [], _lr_dtype
                         )
                         init_result = initializer(
-                            paramete_meta, startup_program.global_block()
+                            parameter_meta, startup_program.global_block()
                         )
                         init_result.persistable = True
                         set_parameter(init_result, lr_name)

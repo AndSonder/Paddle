@@ -433,6 +433,7 @@ class OpInfoParser:
         self.op_compat_item = op_compat_item
         self.yaml_file = yaml_file
         self.is_sparse_op = self.parse_op_type()
+        self.is_fused_op = self.parse_fused_op_type()
         self.op_phi_name = self.parse_op_phi_name()
         self.class_name: str | None = None
         self.kernel_input_type_list: list[str] | None = None
@@ -780,6 +781,14 @@ class OpInfoParser:
         if self.yaml_file.endswith(
             "sparse_ops.parsed.yaml"
         ) or self.yaml_file.endswith("sparse_backward.parsed.yaml"):
+            return True
+        else:
+            return False
+
+    def parse_fused_op_type(self) -> bool:
+        if self.yaml_file.endswith(
+            "fused_ops.parsed.yaml"
+        ) or self.yaml_file.endswith("fused_backward.parsed.yaml"):
             return True
         else:
             return False

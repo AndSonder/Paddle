@@ -450,7 +450,7 @@ std::vector<ir::Node *> TopologySortGraphByDescOrder(const Graph &graph) {
   return ret;
 }
 
-void RemoveControlDepInputAndOuput(OpDesc *op_desc) {
+void RemoveControlDepInputAndOutput(OpDesc *op_desc) {
   auto remove_control_dep_var = [](VariableNameMap *var_name_map) {
     for (auto &pair : *var_name_map) {
       std::vector<std::string> &var_names = pair.second;
@@ -579,8 +579,8 @@ void UpdateControlOpSkipEagerDeletionVars(const Node &node,
                                           const std::string &control_type) {
   // Node(zhangbo): SkipEagerDeletionVars pass policy for control flow class op:
   // 1) if op is in main_block: SkipEagerDeletionVars information will be
-  // writted into Graph OpNode which wrapped by OpHandleBase; 2) if op is in
-  // sub_block: SkipEagerDeletionVars information will be writted into graph's
+  // written into Graph OpNode which wrapped by OpHandleBase; 2) if op is in
+  // sub_block: SkipEagerDeletionVars information will be written into graph's
   // OriginProgram OpDesc. Please refer to
   // FindAllConditionalBlockAndConditionalBlockGradOp in
   // "paddle/fluid/operators/controlflow/conditional_block_op_helper.cc"
@@ -736,7 +736,7 @@ static void GraphToBlock(const Graph &graph,
   GetGraphOpDesc(nodes, block, &ops, graph, graph_idx);
 
   for (auto &op : ops) {
-    RemoveControlDepInputAndOuput(&op);
+    RemoveControlDepInputAndOutput(&op);
     block->add_ops()->MergeFrom(*op.Proto());
   }
 }

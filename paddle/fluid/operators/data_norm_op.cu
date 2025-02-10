@@ -24,6 +24,7 @@ limitations under the License. */
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
 #include "paddle/phi/core/platform/collective_helper.h"
+COMMON_DECLARE_bool(dynamic_static_unified_comm);
 #endif
 
 namespace paddle {
@@ -217,48 +218,85 @@ class DataNormGradKernel<T, phi::GPUContext> : public framework::OpKernel<T> {
     if (need_sync_stats) {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
       int rid = 0;
+      platform::NCCLComm *comm = nullptr;
       const auto &comm_context_manager =
           phi::distributed::CommContextManager::GetInstance();
       phi::distributed::NCCLCommContext *comm_ctx = nullptr;
-      PADDLE_ENFORCE_EQ(comm_context_manager.Has(std::to_string(rid)),
-                        true,
-                        common::errors::InvalidArgument(
-                            "You choose to use new communication library. "
-                            "But ring_id(%d) is "
-                            "not found in comm_context_manager.",
-                            std::to_string(rid)));
-      comm_ctx = static_cast<phi::distributed::NCCLCommContext *>(
-          comm_context_manager.Get(std::to_string(rid)));
-      PADDLE_ENFORCE_NE(comm_ctx,
-                        nullptr,
-                        common::errors::Unavailable(
-                            "NCCLCommContext is nullptr, collective op should "
-                            "has ring_id attr."));
+      if (FLAGS_dynamic_static_unified_comm) {
+        PADDLE_ENFORCE_EQ(
+            comm_context_manager.Has(std::to_string(rid)),
+            true,
+            common::errors::InvalidArgument(
+                "You choose to use new communication library by "
+                "setting environment "
+                "variable FLAGS_dynamic_static_unified_comm True. "
+                "But ring_id(%d) is "
+                "not found in comm_context_manager.",
+                std::to_string(rid)));
+        comm_ctx = static_cast<phi::distributed::NCCLCommContext *>(
+            comm_context_manager.Get(std::to_string(rid)));
+        PADDLE_ENFORCE_NE(
+            comm_ctx,
+            nullptr,
+            common::errors::Unavailable(
+                "NCCLCommContext is nullptr, collective op should "
+                "has ring_id attr."));
+      } else {
+        comm = paddle::platform::NCCLCommContext::Instance().Get(
+            rid, ctx.GetPlace());
+      }
 
-      PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclAllReduce(
-          reinterpret_cast<const void *>(d_batch_size),
-          reinterpret_cast<void *>(d_batch_size),
-          C,
-          phi::ToNCCLDataType(x->dtype()),
-          ncclSum,
-          comm_ctx->GetNcclComm(),
-          stream));
-      PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclAllReduce(
-          reinterpret_cast<const void *>(d_batch_sum),
-          reinterpret_cast<void *>(d_batch_sum),
-          C,
-          phi::ToNCCLDataType(x->dtype()),
-          ncclSum,
-          comm_ctx->GetNcclComm(),
-          stream));
-      PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclAllReduce(
-          reinterpret_cast<const void *>(d_batch_square_sum),
-          reinterpret_cast<void *>(d_batch_square_sum),
-          C,
-          phi::ToNCCLDataType(x->dtype()),
-          ncclSum,
-          comm_ctx->GetNcclComm(),
-          stream));
+      if (comm_ctx) {
+        PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclAllReduce(
+            reinterpret_cast<const void *>(d_batch_size),
+            reinterpret_cast<void *>(d_batch_size),
+            C,
+            phi::ToNCCLDataType(x->dtype()),
+            ncclSum,
+            comm_ctx->GetNcclComm(),
+            stream));
+        PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclAllReduce(
+            reinterpret_cast<const void *>(d_batch_sum),
+            reinterpret_cast<void *>(d_batch_sum),
+            C,
+            phi::ToNCCLDataType(x->dtype()),
+            ncclSum,
+            comm_ctx->GetNcclComm(),
+            stream));
+        PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclAllReduce(
+            reinterpret_cast<const void *>(d_batch_square_sum),
+            reinterpret_cast<void *>(d_batch_square_sum),
+            C,
+            phi::ToNCCLDataType(x->dtype()),
+            ncclSum,
+            comm_ctx->GetNcclComm(),
+            stream));
+      } else {
+        PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclAllReduce(
+            reinterpret_cast<const void *>(d_batch_size),
+            reinterpret_cast<void *>(d_batch_size),
+            C,
+            phi::ToNCCLDataType(x->dtype()),
+            ncclSum,
+            comm->comm(),
+            stream));
+        PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclAllReduce(
+            reinterpret_cast<const void *>(d_batch_sum),
+            reinterpret_cast<void *>(d_batch_sum),
+            C,
+            phi::ToNCCLDataType(x->dtype()),
+            ncclSum,
+            comm->comm(),
+            stream));
+        PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclAllReduce(
+            reinterpret_cast<const void *>(d_batch_square_sum),
+            reinterpret_cast<void *>(d_batch_square_sum),
+            C,
+            phi::ToNCCLDataType(x->dtype()),
+            ncclSum,
+            comm->comm(),
+            stream));
+      }
       phi::backends::gpu::GpuStreamSync(stream);
 #else
       PADDLE_THROW(common::errors::PreconditionNotMet(

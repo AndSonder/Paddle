@@ -39,6 +39,7 @@
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
+COMMON_DECLARE_bool(dynamic_static_unified_comm);
 #endif
 
 PHI_DECLARE_bool(enable_host_event_recorder_hook);

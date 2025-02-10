@@ -80,7 +80,7 @@ def _process_conditions(conditions):
     return [c.strip() for c in conditions]
 
 
-def _proccess_archs(arch):
+def _process_archs(arch):
     """
     desc:
         Input archs options and warp it with 'WITH_', 'OR' and '()' in cmakelist grammar.
@@ -451,7 +451,7 @@ class CMakeGenerator:
 
         envs = _process_envs(envs)
         conditions = _process_conditions(conditions)
-        archs = _proccess_archs(archs)
+        archs = _process_archs(archs)
         os_ = _process_os(os_)
         run_serial = _process_run_serial(run_serial)
 
@@ -626,7 +626,7 @@ if __name__ == "__main__":
         type=lambda x: x.lower() not in ["false", "0", "off"],
         required=False,
         default=False,
-        help="Only check whether the CMake files should be rewriten, do not write it even if it should be write",
+        help="Only check whether the CMake files should be rewritten, do not write it even if it should be write",
     )
     args = parser.parse_args()
 

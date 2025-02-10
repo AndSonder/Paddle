@@ -16,6 +16,7 @@
 
 #include "paddle/cinn/cinn.h"
 #include "paddle/cinn/ir/ir.h"
+#include "paddle/cinn/ir/utils/stmt_converter.h"
 
 namespace cinn {
 namespace ir {
@@ -48,15 +49,16 @@ TEST(CollectIRNodes, basic) {
 
   LOG(INFO) << "fn:\n" << fn;
 
-  auto tensors =
-      CollectIRNodes(fn->body, [](const Expr* x) { return x->as_tensor(); });
+  Expr expr_func_body = ConvertStmtBlockToExprBlock(fn->body_block);
+
+  auto tensors = CollectIRNodes(expr_func_body,
+                                [](const Expr* x) { return x->as_tensor(); });
   ASSERT_EQ(tensors.size(), 3UL);
 
-  auto fn_body = fn.As<ir::_LoweredFunc_>()->body;
-  LOG(INFO) << "fn.body:\n" << fn_body;
-  auto tensors2 =
-      CollectIRNodes(fn_body, [](const Expr* x) { return x->as_tensor(); });
-  auto exprs = CollectIRNodes(fn_body, [](const Expr* x) { return x; });
+  LOG(INFO) << "fn.body:\n" << expr_func_body;
+  auto tensors2 = CollectIRNodes(expr_func_body,
+                                 [](const Expr* x) { return x->as_tensor(); });
+  auto exprs = CollectIRNodes(expr_func_body, [](const Expr* x) { return x; });
 }
 }  // namespace ir_utils
 }  // namespace ir

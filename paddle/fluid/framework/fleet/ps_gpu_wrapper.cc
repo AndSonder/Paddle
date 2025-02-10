@@ -1103,7 +1103,7 @@ void PSGPUWrapper::FilterPull(std::shared_ptr<HeterContext> gpu_task,
                       nullptr,
                       common::errors::InvalidArgument(
                           "The shard values after deduplication should not "
-                          "be nullptr, but got %d at positon %d.",
+                          "be nullptr, but got %d at position %d.",
                           shard_values[dedup_size],
                           dedup_size));
     ++dedup_size;

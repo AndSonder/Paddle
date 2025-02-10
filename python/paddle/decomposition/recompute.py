@@ -425,6 +425,8 @@ def auto_recompute(
     # 1.4  Model pir graph. Convert the pir calculation graph into a networkx calculation graph.
     outputs = backward_utils.ValueSet(outputs)
     inputs = backward_utils.ValueSet(inputs)
+    placeholder_value_nodes = inputs | outputs
+
     value_id_dict = {}
     nx_graph = nx.DiGraph()
 
@@ -591,7 +593,7 @@ def auto_recompute(
 
         weight = _get_node_weight(
             value_node,
-            placeholder_value_nodes=inputs | outputs,
+            placeholder_value_nodes,
         )
 
         # Creates the weights on the "node" edge
@@ -660,7 +662,7 @@ def auto_recompute(
     # (TODO: wanghao107): remove it and fix model
     # saved_values = cut_value_nodes | inputs
     saved_values = cut_value_nodes
-    # 2.patition the joint graph by saved values.
+    # 2.partition the joint graph by saved values.
     (
         program_after_recompute,
         fwd_op_end_idx_after_recompute,

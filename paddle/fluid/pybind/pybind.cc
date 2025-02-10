@@ -257,7 +257,7 @@ DECLARE_FILE_SYMBOLS(aligned_allocator);
 DECLARE_FILE_SYMBOLS(pass_timing);
 DECLARE_FILE_SYMBOLS(op_compatible_info);
 DECLARE_FILE_SYMBOLS(sub_graph_detector);
-
+DECLARE_FILE_SYMBOLS(pd_op_to_kernel_pass);
 namespace paddle::pybind {
 
 PyTypeObject *g_framework_scope_pytype = nullptr;
@@ -3423,8 +3423,9 @@ All parameter, weight, gradient are variables in Paddle.
     paddle::framework::CollectShapeManager::Instance().ClearShapeInfo();
   });
 #ifdef PADDLE_WITH_TENSORRT
-  m.def("register_paddle_plugin",
-        []() { paddle::platform::TrtPluginRegistry::Global()->RegistToTrt(); });
+  m.def("register_paddle_plugin", []() {
+    paddle::platform::TrtPluginRegistry::Global()->RegisterToTrt();
+  });
 #endif
 
 #if defined(PADDLE_WITH_PSLIB) && !defined(PADDLE_WITH_HETERPS)

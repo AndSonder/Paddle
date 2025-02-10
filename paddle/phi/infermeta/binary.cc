@@ -879,9 +879,9 @@ void ConvTransposeInferMeta(const MetaTensor& x,
             output_size[i],
             infer_shape,
             errors::InvalidArgument(
-                "output_size of Op(ConvTransposeOp) should not be "
-                "less than the infered output size. But received output_size = "
-                "[%s], whose dim %d is less than the infered output size [%s]",
+                "output_size of Op(ConvTransposeOp) should not be less than "
+                "the inferred output size. But received output_size = [%s], "
+                "whose dim %d is less than the inferred output size [%s]",
                 common::make_ddim(output_size).to_str(),
                 i,
                 infer_shape));
@@ -890,8 +890,8 @@ void ConvTransposeInferMeta(const MetaTensor& x,
             infer_shape + strides[i],
             errors::InvalidArgument(
                 "output_size of Op(ConvTransposeOp) should be less "
-                "than infered size + stride. But received output_size = [%s], "
-                "whose dim %d is not less than the infered output size (%d) + "
+                "than inferred size + stride. But received output_size = [%s], "
+                "whose dim %d is not less than the inferred output size (%d) + "
                 "stride (%d) = %d",
                 common::make_ddim(output_size).to_str(),
                 i,

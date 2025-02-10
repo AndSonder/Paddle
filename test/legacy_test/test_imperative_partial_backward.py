@@ -20,8 +20,8 @@ import paddle
 from paddle import base
 
 
-class TestImperativePartitialBackward(unittest.TestCase):
-    def test_partitial_backward(self):
+class TestImperativePartialBackward(unittest.TestCase):
+    def test_partial_backward(self):
         with base.dygraph.guard():
             x = np.random.randn(2, 4, 5).astype("float32")
             x = paddle.to_tensor(x)

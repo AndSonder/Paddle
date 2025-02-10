@@ -1167,7 +1167,7 @@ struct PrimitiveNode : public ExprNode<PrimitiveNode> {
   static const IrNodeTy _node_type_ = IrNodeTy::PrimitiveNode;
 };
 
-// possiable keys of attributes in ir nodes with are listed in the following
+// possible keys of attributes in ir nodes with are listed in the following
 // namespace
 namespace attr {
 
@@ -1221,13 +1221,20 @@ struct hash<cinn::ir::IndexExpr> {
       case cinn::ir::IrNodeTy::Sub:
       case cinn::ir::IrNodeTy::Mul:
       case cinn::ir::IrNodeTy::Div:
-      case cinn::ir::IrNodeTy::Mod: {
+      case cinn::ir::IrNodeTy::Mod:
+      case cinn::ir::IrNodeTy::Min:
+      case cinn::ir::IrNodeTy::Max: {
         auto hash_lhs = std::hash<cinn::ir::IndexExpr>()(x.operand(0));
         auto hash_rhs = std::hash<cinn::ir::IndexExpr>()(x.operand(1));
         return cinn::adt::hash_combine(hash_lhs, hash_rhs);
       }
+      case cinn::ir::IrNodeTy::Load:
+      case cinn::ir::IrNodeTy::Cast: {
+        return reinterpret_cast<size_t>(x.get());
+      }
     }
-    ::common::errors::InvalidArgument("Unsupported index expr type.");
+    PADDLE_THROW(
+        ::common::errors::InvalidArgument("Unsupported index expr type."));
   }
 };
 

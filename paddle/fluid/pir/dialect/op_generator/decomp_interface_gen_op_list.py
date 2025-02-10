@@ -31,7 +31,6 @@ MANUAL_IMPL_DECOMP = [
 GENERATE_IMPL_DECOMP = [
     "add_n",
     "addmm",
-    "allclose",
     "any",
     "bce_loss",
     "bmm",

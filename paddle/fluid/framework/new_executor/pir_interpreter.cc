@@ -81,6 +81,7 @@
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
+COMMON_DECLARE_bool(dynamic_static_unified_comm);
 #endif
 #include "paddle/fluid/framework/new_executor/collect_shape_manager.h"
 #include "paddle/fluid/framework/new_executor/nan_inf_utils.h"
@@ -592,6 +593,7 @@ void PirInterpreter::UpdateNcclOpNum() {
       "pd_op.barrier_grad",
       "pd_op.alltoall_grad",
       "pd_op.global_gather_grad",
+      "pd_op.c_concat_grad",
       "pd_op.distributed_fused_lamb_grad",
       "pd_op.margin_cross_entropy_grad",
       "pd_op.sync_batch_norm_grad",
@@ -962,7 +964,9 @@ void PirInterpreter::BuildInstruction() {
               op_idx++, place_, &op, *(value_exe_info_.get())));
     } else if (paddle::dialect::IsCustomEngineOp(&op)) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-      CREATE_INSTR(CustomEngineInstruction);
+      vec_instruction_base_.emplace_back(
+          std::make_unique<CustomEngineInstruction>(
+              op_idx++, place_, &op, value_exe_info_.get(), execution_config_));
 #else
       PADDLE_THROW(common::errors::PreconditionNotMet(
           "Program has CustomEngineOp and must compile Paddle use "
@@ -1194,11 +1198,17 @@ void PirInterpreter::RecordStreamForGC(InstructionBase* instr) {
         op->attribute<::pir::BoolAttribute>("use_calc_stream").data() ==
             false) {
       int ring_id = op->attribute<::pir::Int32Attribute>("ring_id").data();
-      const auto& comm_context_manager =
-          phi::distributed::CommContextManager::GetInstance();
-      stream = static_cast<phi::distributed::NCCLCommContext*>(
-                   comm_context_manager.Get(std::to_string(ring_id)))
-                   ->GetStream();
+      if (FLAGS_dynamic_static_unified_comm) {
+        const auto& comm_context_manager =
+            phi::distributed::CommContextManager::GetInstance();
+        stream = static_cast<phi::distributed::NCCLCommContext*>(
+                     comm_context_manager.Get(std::to_string(ring_id)))
+                     ->GetStream();
+      } else {
+        stream = platform::NCCLCommContext::Instance()
+                     .Get(ring_id, instr->DeviceContext().GetPlace())
+                     ->stream();
+      }
     }
   }
 #endif

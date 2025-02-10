@@ -296,7 +296,7 @@ class OneDNNHandlerT {
   }
 
   // If your primitive descriptor requires attributes, pass them as a
-  // first argument and paramters to descriptor constructor in the following
+  // first argument and parameters to descriptor constructor in the following
   // arguments. Otherwise, all arguments will be forwarded to descriptor
   // constructor, including the first one.
   template <typename Arg, typename... Args>
@@ -607,7 +607,7 @@ class OneDNNHandlerNoCachingT {
 
  protected:
   // If your primitive descriptor requires attributes, pass them as a
-  // first argument and paramters to descriptor constructor in the following
+  // first argument and parameters to descriptor constructor in the following
   // arguments. Otherwise, all arguments will be forwarded to descriptor
   // constructor, including the first one.
   template <typename Arg, typename... Args>

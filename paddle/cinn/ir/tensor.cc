@@ -635,6 +635,10 @@ bool IsReduceInitTensorName(const std::string &tensor_name) {
                             reduce_init_suffix.size()) == reduce_init_suffix;
 }
 
+bool IsSplitTransformTensorName(const std::string &tensor_name) {
+  return tensor_name.find("_split_transform") != std::string::npos;
+}
+
 std::string GetOriginalReduceTensorName(const std::string &tensor_name) {
   std::string reduce_init_suffix(kReduceInitSuffix);
   if (IsReduceInitTensorName(tensor_name)) {

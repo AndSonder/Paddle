@@ -898,7 +898,7 @@ PHI_DEFINE_EXPORTED_bool(enable_neighbor_list_use_uva,
  */
 PHI_DEFINE_EXPORTED_double(graph_neighbor_size_percent,
                            1.0,
-                           "It controls whether precent of neighbor_size.");
+                           "It controls whether percent of neighbor_size.");
 
 /**
  * Distributed related FLAG
@@ -1534,6 +1534,18 @@ PHI_DEFINE_EXPORTED_bool(enable_pir_in_executor,
                          "Enable PIR in executor");
 
 /**
+ * Using PIR API in Python
+ * Name: enable_custom_engine
+ * Since Version: 3.0.0
+ * Value Range: bool, default=false
+ * Example:
+ * Note: If True, CustomDevice can use subgraph engine optimize
+ */
+PHI_DEFINE_EXPORTED_string(enable_custom_engine,
+                           "",
+                           "Set CustomDevice subgraph engine translate pass");
+
+/**
  * Using PIR by translating legacy program to pir program
  * for dy2st mode  FLAG
  * Name: enable_pir_in_executor
@@ -1667,6 +1679,23 @@ PHI_DEFINE_EXPORTED_string(
     disable_logging_op_attr_list,
     "",
     "Remove some redundant information when printing the pir program");
+
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_XPU_BKCL) || defined(PADDLE_WITH_CUSTOM_DEVICE)
+/**
+ * Communication library related FLAG
+ * Name: FLAGS_dynamic_static_unified_comm
+ * Since Version: 2.5
+ * Value Range: bool, default=true
+ * Example:
+ * Note: Whether to use new communication library in auto parallel and static
+ * mode. If true, it will use unified CommContextManager for communication.
+ */
+PHI_DEFINE_EXPORTED_bool(dynamic_static_unified_comm,
+                         true,
+                         "Whether to use new communication library in auto "
+                         "parallel and static mode.");
+#endif  // FLAGS_dynamic_static_unified_comm
 
 /**
  * ProcessGroupNCCL related FLAG
@@ -1860,7 +1889,7 @@ PHI_DEFINE_EXPORTED_string(
     mkl_dir,  // NOLINT
     "",
     "Specify path for loading libmkl_rt.so. "
-    "For insrance, /opt/intel/oneapi/mkl/latest/lib/intel64/."
+    "For instance, /opt/intel/oneapi/mkl/latest/lib/intel64/."
     "If default, "
     "dlopen will search mkl from LD_LIBRARY_PATH");
 
@@ -1943,7 +1972,7 @@ PHI_DEFINE_EXPORTED_int32(
  * Name: enable_auto_parallel_align_mode
  * Since Version: 3.0.0
  * Value Range: bool, default=false
- * Note: Just used for testing. Do not use in model trainning.
+ * Note: Just used for testing. Do not use in model training.
  */
 PHI_DEFINE_EXPORTED_bool(enable_auto_parallel_align_mode,
                          false,

@@ -168,7 +168,7 @@ class TensorRTBaseTest(unittest.TestCase):
                     new_list_args[sub_arg_name] = self.api_args[arg_name][i]
                 self.api_args[arg_name] = new_list_args
 
-    def check_trt_result(self, rtol=1e-4, atol=1e-4, precision_mode="fp32"):
+    def check_trt_result(self, rtol=1e-5, atol=1e-5, precision_mode="fp32"):
         paddle.framework.set_flags({"FLAGS_trt_min_group_size": 1})
         with paddle.pir_utils.IrGuard():
             self.prepare_feed()

@@ -99,6 +99,9 @@ DEFINE_GENERAL_PATTERN(Exp, paddle::dialect::ExpOp)
 DEFINE_GENERAL_PATTERN(Abs, paddle::dialect::AbsOp)
 DEFINE_GENERAL_PATTERN(Abs_, paddle::dialect::Abs_Op)
 DEFINE_GENERAL_PATTERN(Sin, paddle::dialect::SinOp)
+DEFINE_GENERAL_PATTERN(Logsigmoid, paddle::dialect::LogsigmoidOp)
+DEFINE_GENERAL_PATTERN(Embedding, paddle::dialect::EmbeddingOp)
+DEFINE_GENERAL_PATTERN(Unbind, paddle::dialect::UnbindOp)
 DEFINE_GENERAL_PATTERN(Cos, paddle::dialect::CosOp)
 DEFINE_GENERAL_PATTERN(Sinh, paddle::dialect::SinhOp)
 DEFINE_GENERAL_PATTERN(Cosh, paddle::dialect::CoshOp)
@@ -113,6 +116,8 @@ DEFINE_GENERAL_PATTERN(Isnan, paddle::dialect::IsnanOp)
 DEFINE_GENERAL_PATTERN(Sign, paddle::dialect::SignOp)
 DEFINE_GENERAL_PATTERN(Round, paddle::dialect::RoundOp)
 DEFINE_GENERAL_PATTERN(Numel, paddle::dialect::NumelOp)
+DEFINE_GENERAL_PATTERN(Pool3d, paddle::dialect::Pool3dOp)
+DEFINE_GENERAL_PATTERN(ShuffleChannel, paddle::dialect::ShuffleChannelOp)
 
 #undef DEFINE_GENERAL_PATTERN
 
@@ -133,8 +138,7 @@ class ReduceCommonOpPattern : public pir::OpRewritePattern<OpType> {
       return false;
     }
 
-    if constexpr (std::is_same_v<OpType, paddle::dialect::MeanOp> ||
-                  std::is_same_v<OpType, paddle::dialect::AnyOp> ||
+    if constexpr (std::is_same_v<OpType, paddle::dialect::AnyOp> ||
                   std::is_same_v<OpType, paddle::dialect::AllOp>) {
       if (!op->HasAttribute("axis")) {
         VLOG(3) << "The axis attribute does not exist";
@@ -646,6 +650,7 @@ class TransposeOpPattern
     return true;
   }
 };
+
 class GatherOpPattern
     : public pir::OpRewritePattern<paddle::dialect::GatherOp> {
  public:
@@ -656,9 +661,10 @@ class GatherOpPattern
         op->attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
       return false;
     }
-    pir::Value axis = op.operand_source(2);
-    if (!axis) {
-      VLOG(3) << "axis is empty. Skipping rewrite.";
+    if (!op.axis().defining_op()->isa<paddle::dialect::FullOp>()) {
+      VLOG(3) << "When axis is not a constant "
+                 "Skip to convert into TRT.";
+
       return false;
     }
     op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
@@ -1115,35 +1121,6 @@ class SplitWithNumOpPattern
   }
 };
 
-class GreaterEqualOpPattern
-    : public pir::OpRewritePattern<paddle::dialect::GreaterEqualOp> {
- public:
-  using pir::OpRewritePattern<
-      paddle::dialect::GreaterEqualOp>::OpRewritePattern;
-  bool MatchAndRewrite(paddle::dialect::GreaterEqualOp op,
-                       pir::PatternRewriter &rewriter) const override {
-    if (op->HasAttribute(kCanRunTrtAttr) &&
-        op->attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
-      return false;
-    }
-#if IS_TRT_VERSION_LT(8400)
-    VLOG(3) << "GreaterEqualOp is not supported when TensorRT < 8.4";
-    return false;
-#else
-    pir::Value x = op.operand_source(0);
-    pir::Value y = op.operand_source(1);
-    auto x_dtype = pir::GetDataTypeFromValue(x);
-    auto y_dtype = pir::GetDataTypeFromValue(y);
-    if (x_dtype.isa<pir::BoolType>() || y_dtype.isa<pir::BoolType>()) {
-      VLOG(3) << "Greater_equal op do not support bool datatype";
-      return false;
-    }
-#endif
-    op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
-    return true;
-  }
-};
-
 class GreaterThanOpPattern
     : public pir::OpRewritePattern<paddle::dialect::GreaterThanOp> {
  public:
@@ -1229,6 +1206,38 @@ using LogicalOr_OpPattern =
     LogicalCommonOpPattern<paddle::dialect::LogicalOr_Op>;
 using LogicalAndOpPattern =
     LogicalCommonOpPattern<paddle::dialect::LogicalAndOp>;
+
+template <typename OpType>
+class ComparisonCommonOpPattern : public pir::OpRewritePattern<OpType> {
+ public:
+  using pir::OpRewritePattern<OpType>::OpRewritePattern;
+  bool MatchAndRewrite(OpType op,
+                       pir::PatternRewriter &rewriter) const override {
+    if (op->HasAttribute(kCanRunTrtAttr) &&
+        op->template attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
+      return false;
+    }
+    pir::Value x = op.operand_source(0);
+    pir::Value y = op.operand_source(1);
+    auto x_dtype = pir::GetDataTypeFromValue(x);
+    auto y_dtype = pir::GetDataTypeFromValue(y);
+    if (x_dtype.isa<pir::BoolType>() || y_dtype.isa<pir::BoolType>()) {
+      VLOG(3) << "ElementWiseOperation::kLESS/ElementWiseOperation::kGREATER "
+                 "do not support boolean datatype.";
+      return false;
+    }
+    op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
+    return true;
+  }
+};
+using LessEqualOpPattern =
+    ComparisonCommonOpPattern<paddle::dialect::LessEqualOp>;
+using LessEqual_OpPattern =
+    ComparisonCommonOpPattern<paddle::dialect::LessEqual_Op>;
+using GreaterEqualOpPattern =
+    ComparisonCommonOpPattern<paddle::dialect::GreaterEqualOp>;
+using GreaterEqual_OpPattern =
+    ComparisonCommonOpPattern<paddle::dialect::GreaterEqual_Op>;
 
 class MulticlassNms3OpPattern
     : public pir::OpRewritePattern<paddle::dialect::MulticlassNms3Op> {
@@ -2231,6 +2240,32 @@ class TemporalShiftOpPattern
   }
 };
 
+class FusedBiasDropoutResidualLayerNormOpPattern
+    : public pir::OpRewritePattern<
+          paddle::dialect::FusedBiasDropoutResidualLayerNormOp> {
+ public:
+  using pir::OpRewritePattern<
+      paddle::dialect::FusedBiasDropoutResidualLayerNormOp>::OpRewritePattern;
+
+  bool MatchAndRewrite(paddle::dialect::FusedBiasDropoutResidualLayerNormOp op,
+                       pir::PatternRewriter &rewriter) const override {
+    if (op->HasAttribute(kCanRunTrtAttr) &&
+        op->attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
+      return false;
+    }
+    auto dropout_rate_attr = op->attribute<pir::FloatAttribute>("dropout_rate");
+    float dropout_rate = dropout_rate_attr.data();
+    if (dropout_rate != 0.0f) {
+      VLOG(3) << "preln_residual_bias trt layer can not work with "
+                 "fused_bias_dropout_residual_layer_norm op in which the "
+                 "dropout_rate != 0, stop convert";
+      return false;
+    }
+    op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
+    return true;
+  }
+};
+
 class InstanceNormOpPattern
     : public pir::OpRewritePattern<paddle::dialect::InstanceNormOp> {
  public:
@@ -2353,6 +2388,62 @@ class AffineChannelOpPattern
   }
 };
 
+class YoloBoxOpPattern
+    : public pir::OpRewritePattern<paddle::dialect::YoloBoxOp> {
+ public:
+  using pir::OpRewritePattern<paddle::dialect::YoloBoxOp>::OpRewritePattern;
+  bool MatchAndRewrite(paddle::dialect::YoloBoxOp op,
+                       pir::PatternRewriter &rewriter) const override {
+    if (op->HasAttribute(kCanRunTrtAttr) &&
+        op->attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
+      return false;
+    }
+    if (!op->HasAttribute("iou_aware") &&
+        !op->HasAttribute("iou_aware_factor")) {
+      VLOG(3)
+          << "pd_op.yolo_box must has iou_aware and iou_aware_factor attribute";
+      return false;
+    }
+    op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
+    return true;
+  }
+};
+
+class FullBatchSizeLikeOpPattern
+    : public pir::OpRewritePattern<paddle::dialect::FullBatchSizeLikeOp> {
+ public:
+  using pir::OpRewritePattern<
+      paddle::dialect::FullBatchSizeLikeOp>::OpRewritePattern;
+  bool MatchAndRewrite(paddle::dialect::FullBatchSizeLikeOp op,
+                       pir::PatternRewriter &rewriter) const override {
+    if (op->HasAttribute(kCanRunTrtAttr) &&
+        op->attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
+      return false;
+    }
+    if (!op->HasAttribute("input_dim_idx")) {
+      VLOG(3) << "pd_op.full_batch_size_like must has input_dim_idx attribute";
+      return false;
+    }
+    if (!op->HasAttribute("output_dim_idx")) {
+      VLOG(3) << "pd_op.full_batch_size_like must has output_dim_idx attribute";
+      return false;
+    }
+    if (!op->HasAttribute("shape")) {
+      VLOG(3) << "pd_op.full_batch_size_like must has shape attribute";
+      return false;
+    }
+    pir::Value input = op.operand_source(0);
+    auto input_type = pir::GetDataTypeFromValue(input);
+    if (!input_type.isa<pir::Float32Type>()) {
+      VLOG(3) << "pd_op.full_batch_size_like only support float32.";
+      return false;
+    }
+
+    op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
+    return true;
+  }
+};
+
 class TrtOpMarkerPass : public pir::PatternRewritePass {
  public:
   TrtOpMarkerPass() : pir::PatternRewritePass("trt_op_marker_pass", 2) {}
@@ -2413,6 +2504,9 @@ class TrtOpMarkerPass : public pir::PatternRewritePass {
     ADD_PATTERN(Abs_)
     ADD_PATTERN(Cos)
     ADD_PATTERN(Sin)
+    ADD_PATTERN(Logsigmoid)
+    ADD_PATTERN(Embedding)
+    ADD_PATTERN(Unbind)
     ADD_PATTERN(Cos)
     ADD_PATTERN(Sinh)
     ADD_PATTERN(Cosh)
@@ -2427,6 +2521,8 @@ class TrtOpMarkerPass : public pir::PatternRewritePass {
     ADD_PATTERN(Sign)
     ADD_PATTERN(Round)
     ADD_PATTERN(Numel)
+    ADD_PATTERN(Pool3d)
+    ADD_PATTERN(ShuffleChannel)
 #if IS_TRT_VERSION_GE(8600)
     ADD_PATTERN(Layer_norm)
 #endif
@@ -2452,6 +2548,8 @@ class TrtOpMarkerPass : public pir::PatternRewritePass {
     ps.Add(std::make_unique<UnsqueezeOpPattern>(context));
     ps.Add(std::make_unique<SqueezeOpPattern>(context));
     ps.Add(std::make_unique<Unsqueeze_OpPattern>(context));
+    ps.Add(std::make_unique<EmbeddingOpPattern>(context));
+    ps.Add(std::make_unique<UnbindOpPattern>(context));
     ps.Add(std::make_unique<SliceOpPattern>(context));
     ps.Add(std::make_unique<IndexSelectOpPattern>(context));
     ps.Add(std::make_unique<FlattenOpPattern>(context));
@@ -2459,7 +2557,10 @@ class TrtOpMarkerPass : public pir::PatternRewritePass {
     ps.Add(std::make_unique<SplitOpPattern>(context));
     ps.Add(std::make_unique<SplitWithNumOpPattern>(context));
     ps.Add(std::make_unique<GreaterEqualOpPattern>(context));
+    ps.Add(std::make_unique<GreaterEqual_OpPattern>(context));
     ps.Add(std::make_unique<GreaterThanOpPattern>(context));
+    ps.Add(std::make_unique<LessEqualOpPattern>(context));
+    ps.Add(std::make_unique<LessEqual_OpPattern>(context));
     ps.Add(std::make_unique<LessThanOpPattern>(context));
     ps.Add(std::make_unique<MultiplyOpPattern>(context));
     ps.Add(std::make_unique<SubtractOpPattern>(context));
@@ -2507,6 +2608,10 @@ class TrtOpMarkerPass : public pir::PatternRewritePass {
     ps.Add(std::make_unique<EinsumOpPattern>(context));
     ps.Add(std::make_unique<PNormOpPattern>(context));
     ps.Add(std::make_unique<AffineChannelOpPattern>(context));
+    ps.Add(
+        std::make_unique<FusedBiasDropoutResidualLayerNormOpPattern>(context));
+    ps.Add(std::make_unique<YoloBoxOpPattern>(context));
+    ps.Add(std::make_unique<FullBatchSizeLikeOpPattern>(context));
     return ps;
   }
 };

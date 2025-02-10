@@ -166,7 +166,7 @@ class AnalyzeBufferAxis : public ir::IRMutator<>,
       for (int i = 0; i < indices.size(); ++i) {
         if (tensor->buffer->memory_type == ir::MemoryType::GPUShared) {
           // In GPUShared case, the thread vars cannot be simplified
-          std::set<ir::Expr> var_nodes =
+          std::vector<ir::Expr> var_nodes =
               ir::ir_utils::CollectIRNodesWithoutTensor(
                   indices[i], [&](const Expr* x) {
                     const ir::_Var_* var = x->As<ir::_Var_>();

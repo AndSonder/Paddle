@@ -815,13 +815,13 @@ def _load_state_dict(
             paddle.distributed.barrier(process_group)
 
 
-def compute_global_shape(local_tensor_indexs):
-    rank = len(local_tensor_indexs[0].local_shape)
+def compute_global_shape(local_tensor_indices):
+    rank = len(local_tensor_indices[0].local_shape)
     global_shape = []
     for dim in range(rank):
         max_size = max(
             m.global_offset[dim] + m.local_shape[dim]
-            for m in local_tensor_indexs
+            for m in local_tensor_indices
         )
         global_shape.append(max_size)
     return global_shape

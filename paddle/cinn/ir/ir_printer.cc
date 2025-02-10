@@ -522,7 +522,16 @@ void IrPrinter::Visit(const _LoweredFunc_ *f) {
   str_ += utils::Join(arg_names, ", ");
   str_ += ")\n";
 
-  Visit(f->body);
+  if (f->body.defined()) {
+    Visit(f->body);
+  } else {
+    PADDLE_ENFORCE_EQ(
+        f->body_block.defined(),
+        true,
+        ::common::errors::InvalidArgument(
+            "Please ensure that `f->body` or `f->body_block` is defined."));
+    VisitBlock(f->body_block);
+  }
 }
 void IrPrinter::Visit(const Let *f) {
   PADDLE_ENFORCE_EQ(

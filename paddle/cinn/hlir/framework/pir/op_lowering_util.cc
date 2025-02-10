@@ -889,7 +889,7 @@ void MergeReduceToReduce(
       }
     } else {
       PADDLE_THROW(::common::errors::InvalidArgument(
-          "Error! Unkown Reduce Type, Please Check!"));
+          "Error! Unknown Reduce Type, Please Check!"));
     }
   }
 }
@@ -1222,7 +1222,7 @@ void LoopAssignReduce(
       copy_loop_info(nloops, rloops);
     } else {
       PADDLE_THROW(
-          ::common::errors::InvalidArgument("Error! Unkown Reduce Type!"));
+          ::common::errors::InvalidArgument("Error! Unknown Reduce Type!"));
     }
   }
 }

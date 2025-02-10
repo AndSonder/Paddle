@@ -184,8 +184,7 @@ void FusionInfo::ParseInputDimExprs(const OpLoweringGroup& group) {
   };
   // NOTE(Aurelius84): If we can't get DimExpr from Group, we will find them
   // from global ShapeAnalysis.
-  const auto TryeGetDimExprsFromGlobal =
-      [&](const ::pir::Value& value) -> bool {
+  const auto TryGetDimExprsFromGlobal = [&](const ::pir::Value& value) -> bool {
     auto& shape_analysis =
         ::pir::ShapeAnalysisManager::Instance().Get(group.GetParentProgram());
     input_dim_exprs_.push_back(shape_analysis.GetShapeOrDataForValue(value));
@@ -196,7 +195,7 @@ void FusionInfo::ParseInputDimExprs(const OpLoweringGroup& group) {
     if (group.IsBroadcastLeaf()) {
       TryGetDimExprsFromGroup(value);
     } else {
-      TryeGetDimExprsFromGlobal(value);
+      TryGetDimExprsFromGlobal(value);
     }
   }
 }

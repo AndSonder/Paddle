@@ -126,7 +126,7 @@ struct PolyForWithSimpleConditionToForMutator : public ir::IRMutator<Expr*> {
         auto sub = lt->a().As<ir::Sub>();
         node->condition = ir::LT::Make(sub->a(), sub->b());
       } else {
-        PADDLE_THROW(::common::errors::InvalidArgument("Unkown Type!"));
+        PADDLE_THROW(::common::errors::InvalidArgument("Unknown Type!"));
       }
 
       lt_n = node->condition.As<ir::LT>();

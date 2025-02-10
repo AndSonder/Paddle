@@ -41,14 +41,6 @@ def log_softmax_net(x):
     return F.log_softmax(x)
 
 
-def allclose_net1(x, y):
-    return paddle.allclose(x, y, 1e-05, 1e-08, False)
-
-
-def allclose_net2(x, y):
-    return paddle.allclose(x, y, 1e-05, 1e-08, True)
-
-
 def any_net(x):
     return paddle.any(x)
 
@@ -942,54 +934,6 @@ class TestPrimAddmm(TestPrimThree):
         self.z = np.random.random(self.shape_z).astype(self.dtype_z)
         self.net = addmm_net
         self.necessary_ops = "pd_op.addmm"
-        self.enable_cinn = False
-        self.tol = 1e-6
-
-
-class TestPrimAllclose1(TestPrimTwo):
-    def setUp(self):
-        np.random.seed(2024)
-        paddle.seed(2024)
-        self.shape_x = [30, 50]
-        self.shape_y = [30, 50]
-        self.dtype_x = "float32"
-        self.dtype_y = "float32"
-        self.init_x_shape = [None, None]
-        self.init_y_shape = [None, None]
-        self.x = np.random.random(self.shape_x).astype(self.dtype_x)
-        self.y = np.random.random(self.shape_y).astype(self.dtype_y)
-        num_nan = int(0.1 * np.prod(self.shape_x))
-        indices = np.random.choice(
-            np.prod(self.shape_x), num_nan, replace=False
-        )
-        self.x.ravel()[indices] = np.nan
-        self.y.ravel()[indices] = np.nan
-        self.net = allclose_net1
-        self.necessary_ops = "pd_op.allclose"
-        self.enable_cinn = False
-        self.tol = 1e-6
-
-
-class TestPrimAllclose2(TestPrimTwo):
-    def setUp(self):
-        np.random.seed(2024)
-        paddle.seed(2024)
-        self.shape_x = [50, 20]
-        self.shape_y = [50, 20]
-        self.dtype_x = "float32"
-        self.dtype_y = "float32"
-        self.init_x_shape = [None, None]
-        self.init_y_shape = [None, None]
-        self.x = np.random.random(self.shape_x).astype(self.dtype_x)
-        self.y = np.random.random(self.shape_y).astype(self.dtype_y)
-        num_nan = int(0.2 * np.prod(self.shape_x))
-        indices = np.random.choice(
-            np.prod(self.shape_x), num_nan, replace=False
-        )
-        self.x.ravel()[indices] = np.nan
-        self.y.ravel()[indices] = np.nan
-        self.net = allclose_net2
-        self.necessary_ops = "pd_op.allclose"
         self.enable_cinn = False
         self.tol = 1e-6
 

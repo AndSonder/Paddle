@@ -467,13 +467,14 @@ void SubgraphDetector::MergeSource2Target(const SubGraphPtr& source,
 
 SubgraphDetector::SubgraphDetector(pir::Block* block,
                                    const OpClassifier& classifier) {
-  // init sort_ops_ in reverse topo order
-  sort_ops_ = InverselyTopologicalSort(block);
-  // init op2index_ in topo order
+  // init sort_ops_ in reverse topo order and op2index_ in topo order
   int index = 0;
   for (auto& op : *block) {
+    sort_ops_.push_back(&op);
     op2index_[&op] = index++;
   }
+  std::reverse(sort_ops_.begin(), sort_ops_.end());
+
   // construct subgraphs and upstream/downstream relation
   std::vector<SubGraphPtr> subgraph_list;
   for (const auto& op : sort_ops_) {

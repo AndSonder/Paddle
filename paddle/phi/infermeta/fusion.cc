@@ -4345,7 +4345,7 @@ void CrossAttentionXPUInferMeta(
                     common::errors::InvalidArgument(
                         "The dim of input_kv should be 3! But received ",
                         input_kv_dims.size()));
-  // sequece length of q and k/v  not required to be equal
+  // sequence length of q and k/v  not required to be equal
   // but batch size and dim should be the same
   PADDLE_ENFORCE_EQ(
       input_q_dims[0],

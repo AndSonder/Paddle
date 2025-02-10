@@ -1020,7 +1020,7 @@ class TestCastBf16Pass(PassTest):
                 self.pass_attr_list = [
                     {'onednn_placement_pass': {}},
                     {'cpu_bfloat16_placement_pass': {}},
-                    {'cpu_bfloat16_pass': {}},
+                    {'cpu_special_ops_bf16_pass': {}},
                 ]
                 self.feeds = {
                     "x1": np.random.random((1, 30)).astype("float32"),
@@ -1214,6 +1214,88 @@ class TestConv2dBf16PlacementPass(PassTest):
                 self.valid_op_map = {
                     "onednn_op.conv2d": 1,
                     "pd_op.conv2d": 0,
+                }
+                return [main_prog, start_prog]
+
+    def sample_program(self):
+        yield self.build_ir_program(), False
+
+    def setUp(self):
+        self.places.append(paddle.CPUPlace())
+        self.skip_accuracy_verification = True
+
+    def test_check_output(self):
+        self.check_pass_correct()
+
+
+class TestSplitPattern(PassTest):
+    def is_program_valid(self, program=None):
+        return True
+
+    def build_ir_program(self):
+        with paddle.pir_utils.IrGuard():
+            main_prog = paddle.static.Program()
+            start_prog = paddle.static.Program()
+            with paddle.pir.core.program_guard(main_prog, start_prog):
+                x = paddle.static.data(
+                    name='x', shape=[6, 6, 6], dtype='float32'
+                )
+                out0, out1 = paddle.tensor_split(x, 2, axis=0)
+                out = paddle.add(out0, out1)
+                out = paddle.assign(out)
+                self.pass_attr_list = [
+                    {'onednn_placement_pass': {}},
+                    {'cpu_bfloat16_placement_pass': {}},
+                    {'cpu_bfloat16_pass': {}},
+                    {'cpu_special_ops_bf16_pass': {}},
+                    {'cpu_bfloat16_type_placement_pass': {}},
+                    {'cpu_bf16_quantize_squash_pass': {}},
+                ]
+                self.feeds = {
+                    "x": np.random.random((6, 6, 6)).astype("float32"),
+                }
+                self.fetch_list = [out]
+                self.valid_op_map = {
+                    "onednn_op.split": 1,
+                }
+                return [main_prog, start_prog]
+
+    def sample_program(self):
+        yield self.build_ir_program(), False
+
+    def setUp(self):
+        self.places.append(paddle.CPUPlace())
+        self.skip_accuracy_verification = True
+
+    def test_check_output(self):
+        self.check_pass_correct()
+
+
+class TestSplitPattern2(PassTest):
+    def is_program_valid(self, program=None):
+        return True
+
+    def build_ir_program(self):
+        with paddle.pir_utils.IrGuard():
+            main_prog = paddle.static.Program()
+            start_prog = paddle.static.Program()
+            with paddle.pir.core.program_guard(main_prog, start_prog):
+                x = paddle.static.data(
+                    name='x', shape=[1, 5, 80, 80], dtype='float32'
+                )
+                out, _ = paddle.tensor_split(x, 2, axis=1)
+                out = paddle.assign(out)
+                self.pass_attr_list = [
+                    {'onednn_placement_pass': {}},
+                    {'cpu_bfloat16_placement_pass': {}},
+                    {'cpu_special_ops_bf16_pass': {}},
+                ]
+                self.feeds = {
+                    "x": np.random.random((1, 5, 80, 80)).astype("float32"),
+                }
+                self.fetch_list = [out]
+                self.valid_op_map = {
+                    "onednn_op.split": 1,
                 }
                 return [main_prog, start_prog]
 

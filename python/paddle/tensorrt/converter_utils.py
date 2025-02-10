@@ -125,7 +125,7 @@ def get_trt_plugin(plugin_name, field_collection, version, plugin_namespace=""):
     )
     assert (
         plugin_creator
-    ), f"Unabled to find plugin creator with name{plugin_name}"
+    ), f"Unable to found plugin creator with name {plugin_name}"
     plugin = plugin_creator.create_plugin(
         name=plugin_name, field_collection=field_collection
     )
@@ -777,3 +777,15 @@ def get_axis_length(network, input_tensor, axis, is_scalar=False):
             network, dynamic_shape, axis, is_scalar
         )
     return output_tensor
+
+
+def WithFp16():
+    from paddle.tensorrt import PrecisionMode
+
+    trt_manager = TensorRTConfigManager()
+    precision_mode = trt_manager.get_precision_mode()
+    enable_fp16 = False
+    if precision_mode == PrecisionMode.FP16:
+        enable_fp16 = True
+    # TODO(lizexu123) WithInt8() and use_dla are not yet implemented
+    return enable_fp16

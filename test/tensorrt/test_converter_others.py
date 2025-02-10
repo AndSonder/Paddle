@@ -656,5 +656,56 @@ class TestAnchorGeneratorCase1TRTPattern(TensorRTBaseTest):
         self.check_trt_result(precision_mode="fp16")
 
 
+def shuffle_channel_wrapper(x, group=1):
+    return _C_ops.shuffle_channel(x, group)
+
+
+class TestShuffleChannelTRTPattern(TensorRTBaseTest):
+    def setUp(self):
+        self.python_api = shuffle_channel_wrapper
+        self.api_args = {
+            "x": np.random.random((10, 16, 4, 4)).astype("float32"),
+        }
+        self.program_config = {"feed_list": ["x"]}
+        self.min_shape = {"x": [10, 16, 4, 4]}
+        self.opt_shape = {"x": [10, 16, 4, 4]}
+        self.max_shape = {"x": [10, 16, 4, 4]}
+
+    def test_fp32_trt_result(self):
+        self.check_trt_result()
+
+    def test_fp16_trt_result(self):
+        self.check_trt_result(precision_mode="fp16")
+
+
+def full_batch_size_like_wrapper(x, dtype, value, batch_dim):
+    place = paddle.CPUPlace()
+    out_shape = [-1, 5, 1]
+    return _C_ops.full_batch_size_like(
+        x, out_shape, dtype, value, batch_dim, batch_dim, place
+    )
+
+
+class TestFullBatchSizeLikeTRTPattern(TensorRTBaseTest):
+    def setUp(self):
+        self.python_api = full_batch_size_like_wrapper
+        self.api_args = {
+            "x": np.random.random((2, 3, 4)).astype("float32"),
+            "dtype": paddle.float32,
+            "value": 2.0,
+            "batch_dim": 0,
+        }
+        self.program_config = {"feed_list": ["x"]}
+        self.min_shape = {"x": [2, 3, 4]}
+        self.opt_shape = {"x": [3, 3, 4]}
+        self.max_shape = {"x": [4, 3, 4]}
+
+    def test_fp32_trt_result(self):
+        self.check_trt_result()
+
+    def test_fp16_trt_result(self):
+        self.check_trt_result(precision_mode="fp16")
+
+
 if __name__ == '__main__':
     unittest.main()

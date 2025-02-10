@@ -43,6 +43,7 @@ from .exceptions import (  # noqa: F401
     inner_error_default_handler,
 )
 from .info_collector import (  # noqa: F401
+    CompileCountInfo,
     InfoCollector,
     NewSymbolHitRateInfo,
     SubGraphRelationInfo,

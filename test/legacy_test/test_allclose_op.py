@@ -33,18 +33,14 @@ class TestAllcloseOp(OpTest):
     def setUp(self):
         self.set_args()
         self.op_type = "allclose"
-        self.prim_op_type = "comp"
         self.python_api = paddle.allclose
-        self.public_python_api = paddle.allclose
         self.inputs = {
             'Input': self.input,
             'Other': self.other,
-        }
-        self.attrs = {
             "Rtol": self.rtol,
             "Atol": self.atol,
-            'equal_nan': self.equal_nan,
         }
+        self.attrs = {'equal_nan': self.equal_nan}
         self.outputs = {
             'Out': np.array(
                 np.allclose(
@@ -58,7 +54,7 @@ class TestAllcloseOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(check_pir=True, check_prim_pir=True)
+        self.check_output(check_pir=True)
 
 
 class TestAllcloseOpException(TestAllcloseOp):
@@ -230,7 +226,7 @@ class TestAllcloseOpFloat64(TestAllcloseOp):
     def set_args(self):
         self.input = np.array([10.1]).astype("float64")
         self.other = np.array([10]).astype("float64")
-        self.rtol = np.array([0.001]).astype("float64")
+        self.rtol = np.array([0.01]).astype("float64")
         self.atol = np.array([0]).astype("float64")
         self.equal_nan = False
 

@@ -24,6 +24,7 @@
 #include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/ir/op/ir_operators.h"
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
+#include "paddle/cinn/ir/utils/stmt_converter.h"
 #include "paddle/cinn/utils/string.h"
 
 namespace cinn {
@@ -44,7 +45,8 @@ TEST(CrossThreadReductionReplacer, basic) {
   auto func = lang::LowerToAst("reduce_sum", {A, B}, &tensor_group);
   VLOG(6) << "original func\n" << func;
 
-  ir::ModuleExpr mod_expr({func->body});
+  ir::Expr expr_func_body = ir::ConvertStmtBlockToExprBlock(func->body_block);
+  ir::ModuleExpr mod_expr({expr_func_body});
   ir::IRSchedule ir_sch(mod_expr);
 
   ir_sch.Bind(ir_sch.GetLoops("B")[0], "blockIdx.x");

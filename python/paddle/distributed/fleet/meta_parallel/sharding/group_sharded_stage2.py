@@ -578,7 +578,7 @@ class GroupShardedStage2(nn.Layer):
                     ),
                     device=self._default_device,
                     destination=dst_rank,
-                    parm2align=self._trainable_param2align,
+                    param2align=self._trainable_param2align,
                 )
 
             # Criteria to decide whether this parameter is to be put in GradStorage
